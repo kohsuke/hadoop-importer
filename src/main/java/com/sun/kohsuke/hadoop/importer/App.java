@@ -30,6 +30,7 @@ import org.apache.hadoop.io.IOUtils;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileFilter;
 
 /**
  * This tool keeps a directory mirrored in HDFS.
@@ -41,6 +42,7 @@ public class App {
     public static void main(String[] args) throws Exception {
         if(args.length!=3) {
             System.out.println("Usage: java -jar importer.jar [HDFS URL] [local directory] [HDFS directory]");
+            System.exit(-1);
         }
 
         Configuration conf = new Configuration();
@@ -50,17 +52,27 @@ public class App {
         File in = new File(args[1]);
         String out = args[2];
 
-        for (File f : in.listFiles()) {
-            if (f.isDirectory()) continue;
+        File[] children = in.listFiles(new FileFilter() {
+            public boolean accept(File child) {
+                return child.isFile();
+            }
+        });
+        if(children==null) {
+            System.out.println("No such directory exists: "+in);
+            System.exit(-1);
+        }
+        int cnt=1;
+        for (File f : children) {
             String dest = out + '/' + f.getName();
             FileStatus i = dfs.getFileInfo(dest);
             if (i == null || i.getModificationTime() != f.lastModified() || i.getLen()!=f.length()) {
-                System.out.println("Importing " + f);
+                System.out.printf("(%d/%d) Importing %s\n",cnt,children.length,f);
                 IOUtils.copyBytes(new FileInputStream(f), dfs.create(dest, true), conf);
                 dfs.setTimes(dest, f.lastModified(), f.lastModified());
             } else {
-                System.out.println("Skipping " + f);
+                System.out.printf("(%d/%d) Skipping %s\n",cnt,children.length,f);
             }
+            cnt++;
         }
     }
 }
