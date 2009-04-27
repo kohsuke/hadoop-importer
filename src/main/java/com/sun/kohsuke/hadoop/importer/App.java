@@ -54,7 +54,7 @@ public class App {
             if (f.isDirectory()) continue;
             String dest = out + '/' + f.getName();
             FileStatus i = dfs.getFileInfo(dest);
-            if (i == null || i.getModificationTime() != f.lastModified()) {
+            if (i == null || i.getModificationTime() != f.lastModified() || i.getLen()!=f.length()) {
                 System.out.println("Importing " + f);
                 IOUtils.copyBytes(new FileInputStream(f), dfs.create(dest, true), conf);
                 dfs.setTimes(dest, f.lastModified(), f.lastModified());
