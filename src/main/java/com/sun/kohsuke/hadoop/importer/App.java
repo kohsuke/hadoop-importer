@@ -27,10 +27,11 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.hdfs.DFSClient;
 import org.apache.hadoop.io.IOUtils;
+import org.apache.hadoop.ipc.RemoteException;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileFilter;
+import java.io.FileInputStream;
 
 /**
  * This tool keeps a directory mirrored in HDFS.
@@ -67,8 +68,13 @@ public class App {
             FileStatus i = dfs.getFileInfo(dest);
             if (i == null || i.getModificationTime() != f.lastModified() || i.getLen()!=f.length()) {
                 System.out.printf("(%d/%d) Importing %s\n",cnt,children.length,f);
-                IOUtils.copyBytes(new FileInputStream(f), dfs.create(dest, true), conf);
-                dfs.setTimes(dest, f.lastModified(), f.lastModified());
+                try {
+                    IOUtils.copyBytes(new FileInputStream(f), dfs.create(dest, true), conf);
+                    dfs.setTimes(dest, f.lastModified(), f.lastModified());
+                } catch (RemoteException e) {
+                    // failure to create
+                    e.printStackTrace();
+                }
             } else {
                 System.out.printf("(%d/%d) Skipping %s\n",cnt,children.length,f);
             }
